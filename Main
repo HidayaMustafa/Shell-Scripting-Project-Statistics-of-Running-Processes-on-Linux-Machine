@@ -1,0 +1,964 @@
+print_menu() {
+
+  echo "             **************                     "
+
+  echo "Select an option to run the top statistics project :"
+
+  echo "r - Read top output file"
+
+  echo "c - Calculate average, minimum,and maximum CPU usage"
+
+  echo "i - Calculate average, minimum,and maximum  of packets received"
+
+  echo "o - Calculate average, minimum,and maximum  of packets sent"
+
+  echo "u - Find commands with the maximum CPU usage"
+
+  echo "a - Find commands with the maximum average memory usage"
+
+  echo "b - Find commands with the minimum average memory usage"
+
+  echo "e - Exit"
+
+}
+
+
+
+while true ; do
+
+print_menu
+
+read -p "Enter your selection: " selection
+
+case "$selection" in
+
+
+
+  r)
+
+  #Read top output file 
+
+    read -p "“Please enter the name of the file: " name
+
+    while [ ! -e "$name" ]
+
+      do
+
+      echo "File does not exist."
+
+      read -p "“Please enter the name of the file: " name
+
+      continue
+
+    done
+
+  echo "File exist."
+
+    ;;
+
+    
+
+    
+
+  c)
+
+
+
+# Calculate the average, minimum, and maximum CPU usage
+
+
+
+if [ -z "$name" ]; then # check if the user entered a file name
+
+  echo "File not found. Please make sure to read the file by using the case (r)."
+
+  echo ""
+
+else
+
+
+
+  cpu_count=0
+
+  sum=0
+
+  min=9999999
+
+  max=0
+
+
+
+  # read data from the input file, compute avg, max, min
+
+  while read -r line; do
+
+
+
+    if grep -qE "^CPU usage: " <<< "$line"; then
+
+      cpu_usage=$(echo "$line" | awk -F 'CPU usage: ' '{print $2}' | awk '{printf "%.3f", $1}')
+
+
+
+      if [[ "$cpu_usage" =~ ^[0-9]+\.[0-9]+$ ]]; then
+
+        sum=$(awk "BEGIN {print $sum + $cpu_usage}")
+
+        cpu_count=$((cpu_count + 1))
+
+
+
+        if (( $(echo "$cpu_usage < $min" | bc -l) )); then
+
+          min=$cpu_usage
+
+        fi
+
+
+
+        if (( $(echo "$cpu_usage > $max" | bc -l) )); then
+
+          max=$cpu_usage
+
+        fi
+
+      fi
+
+    fi
+
+
+
+  done < "$name"
+
+
+
+  # print results
+
+  if [ "$cpu_count" -gt 0 ]; then
+
+    avg=$(awk "BEGIN {print $sum / $cpu_count}")
+
+    echo ""
+
+    echo "Average CPU usage :  $avg"
+
+    echo "Minimum CPU usage :  $min"
+
+    echo "Maximum CPU usage :  $max"
+
+    echo ""
+
+  else
+
+    echo "No CPU usage data found in the file"
+
+  fi
+
+fi
+
+;;
+
+
+
+  i)
+
+  # Calculate the average, minimum, and maximum number of packets received
+
+   if [ -z "$name" ]; then # check if the user entered a file name
+
+  echo "File not found. Please make sure to read the file by using the case (r)."
+
+  echo ""
+
+      else
+
+      packets_sum=0
+
+      packets_count=0
+
+      packets_minimum=9999999
+
+      packets_maximum=0
+
+      # read data from the input file, compute avg, max, min of Networks packets received
+
+      while IFS= read -r line; do 
+
+          if grep -qE "^Networks: packets: " <<< "$line"; then
+
+            received_packets=$(echo "$line" | awk -F 'Networks: packets: ' '{print $2}' | awk -F '/' '{print $1}')
+
+            
+
+            if [[ "$received_packets" =~ ^[0-9]+$ ]]; then
+
+              packets_sum=$((packets_sum + received_packets))
+
+              packets_count=$((packets_count + 1))
+
+
+
+              if ((received_packets < packets_minimum)); then
+
+                packets_minimum=$received_packets
+
+              fi
+
+
+
+              if ((received_packets > packets_maximum)); then
+
+                packets_maximum=$received_packets
+
+              fi
+
+            fi
+
+          fi
+
+        done < "$name"
+
+# print results
+
+        if [ $packets_count -gt 0 ]; then
+
+          packets_average=$((packets_sum / packets_count))
+
+          echo ""
+
+          echo "Average packets received :  $packets_average"
+
+          echo "Minimum packets received :  $packets_minimum"
+
+          echo "Maximum packets received :  $packets_maximum"
+
+          echo ""
+
+          
+
+        else
+
+          echo "No packet data found in the file"
+
+        fi 
+
+      fi
+
+  ;;
+
+  
+
+  
+
+  o)
+
+   #Calculate the average, minimum, and maximum number of packets sent
+
+   if [ -z "$name" ]; then # check if the user entered a file name
+
+  echo "File not found. Please make sure to read the file by using the case (r)."
+
+  echo ""
+
+      else
+
+      packets_sum=0
+
+      packets_count=0
+
+      packets_minimum=9999999
+
+      packets_maximum=0
+
+      # read data from the input file, compute avg, max, min of Networks packets sent
+
+  while IFS= read -r line; do
+
+    if [[ $line =~ packets:[[:space:]]+[0-9]+/[0-9]+M[[:space:]]+in,[[:space:]]+([0-9]+)/[0-9]+M[[:space:]]+out ]]; then
+
+      sent_packets=${BASH_REMATCH[1]}
+
+      if [[ "$sent_packets" =~ ^[0-9]+$ ]]; then
+
+        packets_sum=$((packets_sum + sent_packets))
+
+        packets_count=$((packets_count + 1))
+
+        if ((sent_packets < packets_minimum)); then
+
+          packets_minimum=$sent_packets
+
+        fi
+
+        if ((sent_packets > packets_maximum)); then
+
+          packets_maximum=$sent_packets
+
+        fi
+
+      fi
+
+    fi
+
+  done < "$name"
+
+
+
+  if [ $packets_count -gt 0 ]; then
+
+    packets_average=$((packets_sum / packets_count))
+
+    echo ""
+
+    echo "Average packets sent :  $packets_average"
+
+    echo "Minimum packets sent :  $packets_minimum"
+
+    echo "Maximum packets sent :  $packets_maximum"
+
+    echo ""
+
+  else
+
+    echo "No packet data found in the file"
+
+  fi
+
+fi
+
+;;
+
+      
+
+ u)
+
+# Find commands with the maximum CPU usage 
+
+   if [ -z "$name" ]; then # check if the user entered a file name
+
+  echo "File not found. Please make sure to read the file by using the case (r)."
+
+  echo ""
+
+      else
+
+read -p "Enter an integer number: " m
+
+while ! [[ $m =~ ^[0-9]+$ ]]; do # check if the m is an integer
+
+    echo "Error, Entered value is not an integer. Please try again."
+
+    read -p "Enter an integer number: " m
+
+done
+
+#cut data from file 
+
+start="COMMAND"
+
+end="Processes:"
+
+output=$(awk "/$start/,/$end/" "$name")
+
+out=$(echo "$output" | grep -v "$end"| grep -v "$start")
+
+cpu_usage=$(echo "$out" | sed 's/^[^ ]* //')
+
+declare -A cpu_sum
+
+declare -A cpu_counts
+
+
+
+while read -r line; do
+
+        s=0
+
+        e=0
+
+
+
+        while [ $s -lt ${#line} ]; do
+
+            current_char="${line:s:1}"
+
+
+
+            if [[ $current_char =~ [0-9] ]]; then
+
+                e=$s
+
+                break
+
+            fi
+
+
+
+            ((s++))
+
+        done
+
+
+
+        ((e--))
+
+        process="${line:0:e}"
+
+
+
+        g=$((e+1))
+
+        i=0
+
+
+
+        while [ $g -lt ${#line} ]; do
+
+            current_char="${line:g:1}"
+
+               if [[ $current_char == " " ]]; then
+
+                i=$g
+
+                break
+
+            fi
+
+
+
+            ((g++))
+
+        done
+
+
+
+        cpu="${line:e:i-e}"
+
+        
+
+        # Sum the total CPU usage for each process and insert it into the array
+
+        if [[ -n "${cpu_sum[$process]}" ]]; then
+
+            cpu_sum[$process]=$(echo "${cpu_sum[$process]} + $cpu" | bc -l)
+
+        else
+
+            cpu_sum[$process]=$cpu
+
+        fi
+
+
+
+        # Update the count for each process
+
+        if [[ -n "${cpu_counts[$process]}" ]]; then
+
+            cpu_counts[$process]=$((cpu_counts[$process] + 1))
+
+        else
+
+            cpu_counts[$process]=1
+
+        fi
+
+    done <<< "$cpu_usage"
+
+
+
+declare -A avg_cpu_totals
+
+
+
+# Calculate average CPU usage for each command
+
+for process in "${!cpu_sum[@]}"; do
+
+    cpu_sum=${cpu_sum["$process"]}
+
+    count=${cpu_counts["$process"]}
+
+    avg_cpu=0
+
+
+
+    if (( count > 0 )); then
+
+        avg_cpu=$(awk "BEGIN {printf \"%.2f\", $cpu_sum / $count}")
+
+    fi
+
+    avg_cpu_totals["$process"]=$avg_cpu
+
+done
+
+#sort command according avg cpu 
+
+sorted_entries1=()
+
+while IFS== read -r key1 value1; do
+
+  sorted_entries1+=("$key1=$value1")
+
+done < <(for key1 in "${!avg_cpu_totals[@]}"; do echo "$key1=${avg_cpu_totals[$key1]}"; done | sort -t= -k2nr)
+
+echo ""
+
+echo "Top $m commands with the maximum average cpu usage:"
+
+echo ""
+
+for ((i=0; i<m && i<${#sorted_entries1[@]}; i++)); do
+
+  entry=${sorted_entries1[i]}
+
+  key="${entry%%=*}"
+
+  value="${entry#*=}"
+
+   echo "Command: $key, AVG CPU usage: ($value)"
+
+done
+
+echo ""
+
+echo "***************************"
+
+echo ""
+
+fi
+
+;;  
+
+           
+
+  a) 
+
+  # Find commands with the maximum mem usage 
+
+   if [ -z "$name" ]; then # check if the user entered a file name
+
+  echo "File not found. Please make sure to read the file by using the case (r)."
+
+  echo ""
+
+      else
+
+    read -p "Enter an integer number: " m
+
+
+
+    while ! [[ $m =~ ^[0-9]+$ ]]; do
+
+        echo "Error: Entered value is not an integer. Please try again."
+
+        read -p "Enter an integer number: " m
+
+    done
+
+# cut data from input file 
+
+    start="COMMAND"
+
+    end="Processes:"
+
+    output=$(awk "/$start/,/$end/" "$name")
+
+    out=$(echo "$output" | grep -v "$end" | grep -v "$start")
+
+    mem_usage=$(echo "$out" | sed 's/^[^ ]* //')
+
+
+
+    declare -A mem_sum
+
+    declare -A mem_counts
+
+
+
+    while read -r line; do
+
+        s=0
+
+        e=0
+
+
+
+        while [ $s -lt ${#line} ]; do
+
+            current_char="${line:s:1}"
+
+            if [[ $current_char =~ [0-9] ]]; then
+
+                e=$s
+
+                break
+
+            fi
+
+            ((s++))
+
+        done
+
+        ((e--))
+
+        process="${line:0:e}"
+
+        process=$(echo "$process" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+
+        mem_i=$(awk -v FS="[ ]+" '{if (NF > 6) print $7}' <<< "${line:e}")
+
+        mem_i=$(echo "$mem_i" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+
+        a=0
+
+        q=0
+
+        while [ $a -lt ${#mem_i} ]; do
+
+            current="${mem_i:a:1}"
+
+           if [[ $current == " " || $current =~ [[:alpha:]] ]]; then
+
+                q=$a
+
+                break
+
+            fi
+
+            ((a++))
+
+        done 
+
+# convert K-1024 , M-1024*1024
+
+        mem="${mem_i:0:q}"
+
+        if [[ $current == [K] ]]; then
+
+            mem=$((mem*1024))
+
+        elif [[ $current == [M] ]]; then
+
+            mem=$((mem*1024*1024))
+
+        fi
+
+        if [[ -n "${mem_sum[$process]}" ]]; then
+
+            mem_sum[$process]=$(echo "${mem_sum[$process]} + $mem" | bc -l)
+
+        else
+
+            mem_sum[$process]=$mem
+
+        fi
+
+
+
+        # Update the count for each process
+
+        if [[ -n "${mem_counts[$process]}" ]]; then
+
+            mem_counts[$process]=$((mem_counts[$process] + 1))
+
+        else
+
+            mem_counts[$process]=1
+
+        fi
+
+    done <<< "$mem_usage"
+
+
+
+    declare -A avg_mem_totals
+
+
+
+    # Calculate average mem usage for each command
+
+    for process in "${!mem_sum[@]}"; do
+
+        sum=${mem_sum["$process"]}
+
+        count=${mem_counts["$process"]}
+
+        avg_mem=0
+
+        if (( count > 0 )); then
+
+            avg_mem=$(awk "BEGIN {printf \"%.2f\", $sum / $count}")
+
+        fi
+
+           avg_mem_totals["$process"]=$avg_mem
+
+    done
+
+#sort command according avg
+
+sorted_entries=()
+
+while IFS== read -r key value; do
+
+  sorted_entries+=("$key=$value")
+
+done < <(for key in "${!avg_mem_totals[@]}"; do echo "$key=${avg_mem_totals[$key]}"; done | sort -t= -k2nr)
+
+echo "***************************"
+
+echo "Top $m commands with the maximum average memory usage:"
+
+ echo " "
+
+for ((i=0; i<m && i<${#sorted_entries[@]}; i++)); do
+
+  entry=${sorted_entries[i]}
+
+  key="${entry%%=*}"
+
+  value="${entry#*=}"
+
+   echo "Command: $key, AVG MEM usage: ($value)"
+
+done
+
+echo "***************************"
+
+    echo " "
+
+fi
+
+    ;;
+
+  b)
+
+   # Find commands with the maximum mem usage 
+
+   if [ -z "$name" ]; then # check if the user entered a file name
+
+  echo "File not found. Please make sure to read the file by using the case (r)."
+
+  echo ""
+
+      else
+
+    read -p "Enter an integer number: " m
+
+
+
+    while ! [[ $m =~ ^[0-9]+$ ]]; do
+
+        echo "Error: Entered value is not an integer. Please try again."
+
+        read -p "Enter an integer number: " m
+
+    done
+
+
+
+    start="COMMAND"
+
+    end="Processes:"
+
+
+
+    output=$(awk "/$start/,/$end/" "$name")
+
+    out=$(echo "$output" | grep -v "$end" | grep -v "$start")
+
+    mem_usage=$(echo "$out" | sed 's/^[^ ]* //')
+
+
+
+    declare -A mem_sum
+
+    declare -A mem_counts
+
+
+
+    while read -r line; do
+
+        s=0
+
+        e=0
+
+
+
+        while [ $s -lt ${#line} ]; do
+
+            current_char="${line:s:1}"
+
+            if [[ $current_char =~ [0-9] ]]; then
+
+                e=$s
+
+                break
+
+            fi
+
+            ((s++))
+
+        done
+
+        ((e--))
+
+        process="${line:0:e}"
+
+        process=$(echo "$process" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+
+        mem_i=$(awk -v FS="[ ]+" '{if (NF > 6) print $7}' <<< "${line:e}")
+
+        mem_i=$(echo "$mem_i" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+
+        a=0
+
+        q=0
+
+        while [ $a -lt ${#mem_i} ]; do
+
+            current="${mem_i:a:1}"
+
+           if [[ $current == " " || $current =~ [[:alpha:]] ]]; then
+
+                q=$a
+
+                break
+
+            fi
+
+            ((a++))
+
+        done
+
+        mem="${mem_i:0:q}"
+
+        if [[ $current == [K] ]]; then
+
+            mem=$((mem*1024))
+
+        elif [[ $current == [M] ]]; then
+
+            mem=$((mem*1024*1024))
+
+        fi
+
+
+
+        if [[ -n "${mem_sum[$process]}" ]]; then
+
+            mem_sum[$process]=$(echo "${mem_sum[$process]} + $mem" | bc -l)
+
+        else
+
+            mem_sum[$process]=$mem
+
+        fi
+
+
+
+        # Update the count for each process
+
+        if [[ -n "${mem_counts[$process]}" ]]; then
+
+            mem_counts[$process]=$((mem_counts[$process] + 1))
+
+        else
+
+            mem_counts[$process]=1
+
+        fi
+
+    done <<< "$mem_usage"
+
+
+
+    declare -A avg_mem_totals
+
+
+
+    # Calculate average mem usage for each command
+
+    for process in "${!mem_sum[@]}"; do
+
+        sum=${mem_sum["$process"]}
+
+        count=${mem_counts["$process"]}
+
+        avg_mem=0
+
+        if (( count > 0 )); then
+
+            avg_mem=$(awk "BEGIN {printf \"%.2f\", $sum / $count}")
+
+        fi
+
+           avg_mem_totals["$process"]=$avg_mem
+
+    done
+
+
+
+sorted_entries=()
+
+while IFS== read -r key value; do
+
+  sorted_entries+=("$key=$value")
+
+done < <(for key in "${!avg_mem_totals[@]}"; do echo "$key=${avg_mem_totals[$key]}"; done | sort -t= -k2n)
+
+echo ""
+
+echo "***************************"
+
+echo "Top $m commands with the minimum average memory usage:"
+
+echo ""
+
+for ((i=0; i<m && i<${#sorted_entries[@]}; i++)); do
+
+  entry=${sorted_entries[i]}
+
+  key="${entry%%=*}"
+
+  value="${entry#*=}"
+
+   echo "Command: $key, AVG MEM usage: ($value)"
+
+done
+
+echo ""
+
+    echo "***************************"
+
+    
+
+fi
+
+    ;;
+
+  e)
+
+    read -p "Are you sure you want to exit? " ch
+
+if [[ $ch == "yes" ]]; then
+
+ echo " Exiting... "
+
+  exit 0
+
+fi
+
+    ;;
+
+  *)
+
+    echo "Invalid selection ! ! , try again "
+
+    ;;
+
+esac
+
+done
+
